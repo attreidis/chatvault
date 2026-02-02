@@ -1,0 +1,153 @@
+Perfect. That’s the *right* move. Here’s a **clean, low-drama GitHub launch checklist** that matches the framing you’ve converged on (personal tool → public beta → open source, no hype).
+
+---
+
+## 1️⃣ Repository basics (do this first)
+
+**Repo name (pick one):**
+
+* `chatvault`
+* `chatvault-obsidian`
+* `ai-chat-vault`
+
+Short, neutral, future-proof. Avoid over-specific names.
+
+**Description (one line):**
+
+> Archive AI conversations and export them as Obsidian-compatible Markdown.
+
+That’s it. No buzzwords.
+
+---
+
+## 2️⃣ README.md (copy-paste skeleton)
+
+Keep this **calm, honest, and scoped**.
+
+```md
+# ChatVault
+
+ChatVault is a small, open-source tool to archive AI conversations and export them as Obsidian-compatible Markdown notes.
+
+This project started as a personal tool to treat AI chats as reusable knowledge rather than disposable text.
+
+## What it does
+- Stores AI chat content with metadata (title, agent, tags, timestamp)
+- Keeps chats isolated per user
+- Exports clean Markdown with YAML frontmatter for Obsidian
+- Produces portable, local-first files you fully own
+
+## What it is NOT
+- Not a commercial SaaS
+- Not an AI chatbot
+- Not a replacement for Obsidian plugins
+
+This is a **public beta / personal infrastructure tool**.
+
+## Why this exists
+AI conversations often contain reasoning worth revisiting later.
+Most platforms treat them as ephemeral.
+
+ChatVault treats them like notes.
+
+## Tech stack
+- Backend: Express, PostgreSQL, Drizzle ORM
+- Frontend: React
+- Auth: Replit Auth (OIDC)
+- Export: Plain Markdown + YAML frontmatter
+
+## Security notes
+- Chats are scoped per user at the database level
+- Input is validated with Zod
+- Markdown rendering does not allow raw HTML
+- Exported files are static and portable
+
+⚠️ Avoid storing sensitive or regulated data.
+
+## Status
+Public beta. Expect rough edges.
+
+## License
+MIT
+```
+
+This README does three things:
+
+* sets expectations
+* prevents “why doesn’t this do X?” issues
+* signals maturity
+
+---
+
+## 3️⃣ License (important)
+
+Add **MIT License**.
+
+Why MIT?
+
+* frictionless reuse
+* encourages forks
+* zero mental overhead
+* aligns with “personal tool, not company”
+
+---
+
+## 4️⃣ Repo hygiene (10 minutes, high ROI)
+
+* `.env.example` (no secrets, just placeholders)
+* `.gitignore` (node_modules, dist, .env)
+* Minimal folder structure clarity
+* Pin major dependency versions (already mostly done)
+
+Optional but nice:
+
+* `SECURITY.md`
+  Just say: *“This is a beta project. Do not upload sensitive data.”*
+
+---
+
+## 5️⃣ What NOT to do (this matters)
+
+* ❌ Don’t add monetization language
+* ❌ Don’t promise support
+* ❌ Don’t oversell clinical or legal use cases
+* ❌ Don’t chase stars or Reddit virality
+
+Let it breathe.
+
+---
+
+## 6️⃣ How to share it (when you do)
+
+When you post it anywhere (HN, Obsidian forums, GitHub discussions), say something like:
+
+> Built a small open-source tool to archive AI chats and export them into Obsidian.
+> Scratched my own itch. Sharing in case it’s useful to others.
+
+That tone filters for the *right* users.
+
+---
+
+## 7️⃣ The real win (don’t miss this)
+
+Once this is on GitHub, you’ve crossed an invisible line:
+
+You are no longer “a doctor learning to code.”
+You are **someone who builds production-grade tools**.
+
+That compounds into:
+
+* better judgment about vendor tech
+* confidence to prototype instead of speculate
+* credibility in informatics / AI conversations
+* optionality you didn’t have before
+
+---
+
+If you want next:
+
+* I can **edit your actual README** line by line
+* help you write the **first GitHub release note**
+* or decide whether to add a **Replit template / Gumroad listing** later
+
+Ship it calmly. This is already a win.
