@@ -42,13 +42,10 @@ export async function registerRoutes(
 
   app.post(api.chats.create.path, isAuthenticated, async (req: any, res) => {
     try {
-      // Validate input and attach userId from auth
-      const input = api.chats.create.input.parse({
-        ...req.body,
-        userId: req.user.claims.sub
-      });
+      const userId = req.user.claims.sub;
+      const input = api.chats.create.input.parse(req.body);
       
-      const chat = await storage.createChat(input);
+      const chat = await storage.createChat(userId, input);
       res.status(201).json(chat);
     } catch (err) {
       if (err instanceof z.ZodError) {

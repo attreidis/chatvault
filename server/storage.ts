@@ -5,7 +5,7 @@ import { eq, desc, and } from "drizzle-orm";
 export interface IStorage {
   getChats(userId: string): Promise<Chat[]>;
   getChat(id: number): Promise<Chat | undefined>;
-  createChat(chat: InsertChat): Promise<Chat>;
+  createChat(userId: string, chat: InsertChat): Promise<Chat>;
   updateChat(id: number, updates: UpdateChatRequest): Promise<Chat>;
   deleteChat(id: number): Promise<void>;
 }
@@ -23,8 +23,8 @@ export class DatabaseStorage implements IStorage {
     return chat;
   }
 
-  async createChat(insertChat: InsertChat): Promise<Chat> {
-    const [chat] = await db.insert(chats).values(insertChat).returning();
+  async createChat(userId: string, insertChat: InsertChat): Promise<Chat> {
+    const [chat] = await db.insert(chats).values({ ...insertChat, userId }).returning();
     return chat;
   }
 
