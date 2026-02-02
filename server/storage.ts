@@ -4,10 +4,10 @@ import { eq, desc, and } from "drizzle-orm";
 
 export interface IStorage {
   getChats(userId: string): Promise<Chat[]>;
-  getChat(id: number): Promise<Chat | undefined>;
+  getChat(userId: string, id: number): Promise<Chat | undefined>;
   createChat(userId: string, chat: InsertChat): Promise<Chat>;
-  updateChat(id: number, updates: UpdateChatRequest): Promise<Chat>;
-  deleteChat(id: number): Promise<void>;
+  updateChat(userId: string, id: number, updates: UpdateChatRequest): Promise<Chat | undefined>;
+  deleteChat(userId: string, id: number): Promise<boolean>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -18,8 +18,11 @@ export class DatabaseStorage implements IStorage {
       .orderBy(desc(chats.createdAt));
   }
 
-  async getChat(id: number): Promise<Chat | undefined> {
-    const [chat] = await db.select().from(chats).where(eq(chats.id, id));
+  // User-scoped query - only returns chat if owned by user
+  async getChat(userId: string, id: number): Promise<Chat | undefined> {
+    const [chat] = await db.select()
+      .from(chats)
+      .where(and(eq(chats.id, id), eq(chats.userId, userId)));
     return chat;
   }
 
@@ -28,16 +31,21 @@ export class DatabaseStorage implements IStorage {
     return chat;
   }
 
-  async updateChat(id: number, updates: UpdateChatRequest): Promise<Chat> {
+  // User-scoped update - only updates if owned by user
+  async updateChat(userId: string, id: number, updates: UpdateChatRequest): Promise<Chat | undefined> {
     const [updated] = await db.update(chats)
       .set({ ...updates, updatedAt: new Date() })
-      .where(eq(chats.id, id))
+      .where(and(eq(chats.id, id), eq(chats.userId, userId)))
       .returning();
     return updated;
   }
 
-  async deleteChat(id: number): Promise<void> {
-    await db.delete(chats).where(eq(chats.id, id));
+  // User-scoped delete - only deletes if owned by user
+  async deleteChat(userId: string, id: number): Promise<boolean> {
+    const result = await db.delete(chats)
+      .where(and(eq(chats.id, id), eq(chats.userId, userId)))
+      .returning({ id: chats.id });
+    return result.length > 0;
   }
 }
 
