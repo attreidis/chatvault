@@ -1,0 +1,72 @@
+Nice — this is exactly the answer I wanted to see.
+
+## ✅ XSS verdict: you’re safe *with this config*
+
+With `react-markdown` v10 and **no `rehype-raw`**, raw HTML in the source is **not** interpreted as HTML. It’s treated as text nodes, so things like `<script>` or `<img onerror=...>` won’t execute. Your current rendering:
+
+```tsx
+<ReactMarkdown>{chat.content}</ReactMarkdown>
+```
+
+…is the safe default. So the big “public internet” footgun is not present. Good.
+
+### The one “don’t accidentally do this later” warning
+
+If in a future iteration you add:
+
+* `rehypeRaw` / `rehype-raw`
+* or allow HTML via `skipHtml={false}` / custom rehype pipeline
+
+…then you *do* need sanitization (DOMPurify or `rehype-sanitize`). So my advice is: **leave a code comment** above the component to prevent future-you from “just enabling HTML real quick.”
+
+Example:
+
+```tsx
+// Security: Do NOT add rehype-raw without sanitization (XSS risk).
+```
+
+That comment pays dividends.
+
+---
+
+## Final pre-deploy review (based on everything you’ve shown)
+
+### ✅ Security posture is good
+
+* user-scoped DB reads/writes ✅
+* stable userId mapping (`claims.sub`) ✅
+* route param validation ✅
+* input validation + enums ✅
+* Markdown rendering safe by default ✅
+* export hardened ✅
+* payload limit ✅
+
+### ⚠️ Remaining “ship blockers” (small but real)
+
+1. **Add error handling back to routes** (or a global handler)
+   Right now your route handlers don’t have `try/catch`. A single Zod parse failure will rely on Express’s default error handler, which can be messy and inconsistent.
+
+This is the one change I’d require before calling it “wild-safe.”
+
+2. **Make update schema explicit + require non-empty update** (recommended)
+   Your current `updateChatSchema = insertChatSchema.partial()` is usable, but it’s easy to accidentally allow weird updates or accept empty `{}` updates.
+
+---
+
+## “Ship / Don’t ship” verdict
+
+**Ship as a public beta** ✅ — **after** you add the global error handler (and ideally the update-schema refinement). Your data isolation, rendering safety, and export pipeline are all in good shape.
+
+---
+
+## Minimal patch list (fastest to implement)
+
+If you want the absolute minimum changes before deploy:
+
+1. Add an `asyncHandler` wrapper + error middleware (Zod→400, else 500)
+2. Add a security comment above `ReactMarkdown` to prevent enabling raw HTML later
+3. (Optional) Switch `createdAt/updatedAt` to `.notNull()` to remove `!`
+
+That’s it.
+
+You’ve built something genuinely useful here, and it’s rare for a “first app” to have this clean of a security boundary. Keep the momentum—this is how you end up with a tool you actually use instead of a weekend artifact that fades into the digital fog.

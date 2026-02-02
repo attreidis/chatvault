@@ -227,6 +227,7 @@ export default function ChatDetail() {
           {/* Main Chat Content */}
           <div className="lg:col-span-3">
             <Card className="p-8 bg-card border-border/50 min-h-[500px]">
+              {/* Security: Do NOT add rehype-raw without sanitization (XSS risk) */}
               <div className="prose-custom">
                 <ReactMarkdown>{chat.content}</ReactMarkdown>
               </div>
