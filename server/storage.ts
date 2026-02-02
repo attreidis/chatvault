@@ -1,38 +1,44 @@
-import { type User, type InsertUser } from "@shared/schema";
-import { randomUUID } from "crypto";
-
-// modify the interface with any CRUD methods
-// you might need
+import { chats, type Chat, type InsertChat, type UpdateChatRequest } from "@shared/schema";
+import { db } from "./db";
+import { eq, desc, and } from "drizzle-orm";
 
 export interface IStorage {
-  getUser(id: string): Promise<User | undefined>;
-  getUserByUsername(username: string): Promise<User | undefined>;
-  createUser(user: InsertUser): Promise<User>;
+  getChats(userId: string): Promise<Chat[]>;
+  getChat(id: number): Promise<Chat | undefined>;
+  createChat(chat: InsertChat): Promise<Chat>;
+  updateChat(id: number, updates: UpdateChatRequest): Promise<Chat>;
+  deleteChat(id: number): Promise<void>;
 }
 
-export class MemStorage implements IStorage {
-  private users: Map<string, User>;
-
-  constructor() {
-    this.users = new Map();
+export class DatabaseStorage implements IStorage {
+  async getChats(userId: string): Promise<Chat[]> {
+    return await db.select()
+      .from(chats)
+      .where(eq(chats.userId, userId))
+      .orderBy(desc(chats.createdAt));
   }
 
-  async getUser(id: string): Promise<User | undefined> {
-    return this.users.get(id);
+  async getChat(id: number): Promise<Chat | undefined> {
+    const [chat] = await db.select().from(chats).where(eq(chats.id, id));
+    return chat;
   }
 
-  async getUserByUsername(username: string): Promise<User | undefined> {
-    return Array.from(this.users.values()).find(
-      (user) => user.username === username,
-    );
+  async createChat(insertChat: InsertChat): Promise<Chat> {
+    const [chat] = await db.insert(chats).values(insertChat).returning();
+    return chat;
   }
 
-  async createUser(insertUser: InsertUser): Promise<User> {
-    const id = randomUUID();
-    const user: User = { ...insertUser, id };
-    this.users.set(id, user);
-    return user;
+  async updateChat(id: number, updates: UpdateChatRequest): Promise<Chat> {
+    const [updated] = await db.update(chats)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(chats.id, id))
+      .returning();
+    return updated;
+  }
+
+  async deleteChat(id: number): Promise<void> {
+    await db.delete(chats).where(eq(chats.id, id));
   }
 }
 
-export const storage = new MemStorage();
+export const storage = new DatabaseStorage();
