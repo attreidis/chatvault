@@ -1,4 +1,4 @@
-import { pgTable, text, serial, timestamp, boolean, varchar } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, timestamp, varchar } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 import { sql } from "drizzle-orm";
@@ -33,15 +33,20 @@ export const insertChatSchema = createInsertSchema(chats).omit({
   agent: z.enum(AGENTS),
   title: z.string().min(1, "Title is required").max(500),
   content: z.string().min(1, "Content is required"),
-  tags: z.array(z.string()).optional().default([]),
+  tags: z.array(
+    z.string().trim().min(1).max(50)
+  ).max(50).default([]).transform(tags => [...new Set(tags)]),
 });
+
+// Explicit update schema - only allow specific fields
+export const updateChatSchema = insertChatSchema.partial();
 
 // === EXPLICIT API TYPES ===
 export type Chat = typeof chats.$inferSelect;
 export type InsertChat = z.infer<typeof insertChatSchema>;
 
 export type CreateChatRequest = InsertChat;
-export type UpdateChatRequest = Partial<InsertChat>;
+export type UpdateChatRequest = z.infer<typeof updateChatSchema>;
 
 export type ChatResponse = Chat;
 export type ChatsListResponse = Chat[];

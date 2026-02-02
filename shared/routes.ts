@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { insertChatSchema, chats } from './schema';
+import { insertChatSchema, updateChatSchema, chats } from './schema';
 
 // === SHARED ERROR SCHEMAS ===
 export const errorSchemas = {
@@ -48,7 +48,7 @@ export const api = {
     update: {
       method: 'PUT' as const,
       path: '/api/chats/:id',
-      input: insertChatSchema.partial(),
+      input: updateChatSchema,
       responses: {
         200: z.custom<typeof chats.$inferSelect>(),
         400: errorSchemas.validation,
