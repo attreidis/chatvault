@@ -1,0 +1,89 @@
+1) server/routes.ts (or wherever the Express routes actually are)
+
+Specifically the handlers for:
+
+GET /api/chats
+
+GET /api/chats/:id
+
+POST /api/chats
+
+PUT /api/chats/:id
+
+DELETE /api/chats/:id
+
+Why this is #1: it’s where authorization leaks and missing validation hide. If there’s a bug that lets someone read/delete another user’s chat, it’ll be here.
+
+If the file is long: paste only those route blocks + any middleware used on them.
+
+2) Your auth middleware + “how do you get userId?”
+
+Paste:
+
+isAuthenticated middleware (Replit Auth wrapper)
+
+whatever sets req.user / req.user.claims / req.session
+
+the helper that extracts userId
+
+Why: I need to see exactly what identity you trust, and how you’re tying it to DB records.
+
+3) Client API calls (where TanStack Query hits the endpoints)
+
+Paste the file where you do fetch(...) / apiRequest(...), especially:
+
+create chat mutation
+
+update chat mutation
+
+get chat query
+
+Why: This shows what your client is sending, what headers, how errors are handled, and whether the server is getting clean inputs.
+
+4) shared/schema.ts (full file, including users model) + any validation schemas
+
+You already pasted the chat table, but include:
+
+the users table definition from ./models/auth
+
+any Zod schemas used server-side
+
+Why: this determines foreign key behavior, userId type, and validation surface.
+
+5) ChatDetail.tsx (the full component)
+
+You pasted handleExport, but full component tells me:
+
+whether chat.content is raw markdown, HTML, JSON, etc.
+
+where content comes from and how it’s rendered
+
+any XSS risk if you render it as HTML
+
+Quick safety note before you paste (worth it)
+
+Redact:
+
+any secrets / tokens
+
+database URLs
+
+cookie signing secrets
+
+OIDC client secrets
+
+User IDs are fine. Route logic is fine. Stack traces are fine.
+
+The single best “minimal paste” if you want to keep it short
+
+Paste these 3 chunks and I can give you very actionable improvements:
+
+server/routes.ts for the chat routes
+
+isAuthenticated + userId extraction
+
+the client file that calls /api/chats
+
+That’s the sweet spot for max ROI: security + correctness + reliability.
+
+(And yes: I’m going to be annoying about user-scoped queries, because nothing ruins a nice app like “any logged-in user can read someone else’s notes” 😅
