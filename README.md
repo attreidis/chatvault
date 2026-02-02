@@ -1,97 +1,44 @@
 # ChatVault
 
-Store AI conversations from ChatGPT, Claude, Gemini, and more — then export them as Obsidian-ready Markdown with metadata and tags.
+ChatVault is a small, open-source tool to archive AI conversations and export them as Obsidian-compatible Markdown notes.
 
-![Stack](https://img.shields.io/badge/Stack-Express%20%2B%20React%20%2B%20PostgreSQL-blue)
-![License](https://img.shields.io/badge/License-MIT-green)
+This project started as a personal tool to treat AI chats as reusable knowledge rather than disposable text.
 
-## Features
+## What it does
+- Stores AI chat content with metadata (title, agent, tags, timestamp)
+- Keeps chats isolated per user
+- Exports clean Markdown with YAML frontmatter for Obsidian
+- Produces portable, local-first files you fully own
 
-- **Multi-Platform Support**: Archive chats from ChatGPT, Claude, Gemini, Llama, or any AI assistant
-- **Obsidian Export**: Download conversations as Markdown files with YAML frontmatter
-- **Tagging System**: Organize with tags that integrate with Obsidian's linking
-- **Role Block Formatting**: Optional export with `## User` / `## Assistant` headers
-- **Secure by Design**: User-isolated data with Replit Auth (OIDC)
+## What it is NOT
+- Not a commercial SaaS
+- Not an AI chatbot
+- Not a replacement for Obsidian plugins
 
-## Export Format
+This is a **public beta / personal infrastructure tool**.
 
-Exported files are fully compatible with Obsidian:
+## Why this exists
+AI conversations often contain reasoning worth revisiting later.
+Most platforms treat them as ephemeral.
 
-```markdown
----
-title: "React Hooks Tutorial"
-agent: "claude"
-date: "2026-02-02 14:30"
-tags:
-  - "coding"
-  - "react"
----
+ChatVault treats them like notes.
 
-# React Hooks Tutorial
+## Tech stack
+- Backend: Express, PostgreSQL, Drizzle ORM
+- Frontend: React
+- Auth: Replit Auth (OIDC)
+- Export: Plain Markdown + YAML frontmatter
 
-User: How do I use useEffect properly?
-```
+## Security notes
+- Chats are scoped per user at the database level
+- Input is validated with Zod
+- Markdown rendering does not allow raw HTML
+- Exported files are static and portable
 
-## Tech Stack
+⚠️ Avoid storing sensitive or regulated data.
 
-- **Frontend**: React + Vite + TanStack Query + Tailwind CSS + shadcn/ui
-- **Backend**: Express + Drizzle ORM
-- **Database**: PostgreSQL
-- **Auth**: Replit Auth (OIDC)
-
-## Getting Started
-
-### On Replit
-
-1. Fork this project
-2. The app will auto-start with `npm run dev`
-3. Login with your Replit account
-4. Start archiving your AI chats!
-
-### Local Development
-
-```bash
-# Install dependencies
-npm install
-
-# Set up environment variables
-cp .env.example .env
-# Edit .env with your DATABASE_URL and SESSION_SECRET
-
-# Push database schema
-npm run db:push
-
-# Start development server
-npm run dev
-```
-
-## API Endpoints
-
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | `/api/chats` | List all user's chats |
-| GET | `/api/chats/:id` | Get a single chat |
-| POST | `/api/chats` | Create a new chat |
-| PUT | `/api/chats/:id` | Update a chat |
-| DELETE | `/api/chats/:id` | Delete a chat |
-
-## Security
-
-- All database queries are user-scoped (WHERE userId = currentUser)
-- Input validation via Zod schemas
-- Agent field constrained to enum values
-- Tags: trimmed, deduplicated, max 50 chars each
-- ReactMarkdown v10 (XSS-safe by default)
-- YAML-safe frontmatter export
+## Status
+Public beta. Expect rough edges.
 
 ## License
-
-MIT License - see [LICENSE](LICENSE) for details.
-
-## Contributing
-
-Contributions are welcome! Please feel free to submit a Pull Request.
-
-## Acknowledgments
-
-Built with [Replit](https://replit.com) and designed for [Obsidian](https://obsidian.md) users who want to preserve their AI conversations.
+MIT
