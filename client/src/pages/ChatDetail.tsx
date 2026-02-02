@@ -12,12 +12,86 @@ import {
   Edit, 
   Bot, 
   Calendar,
-  Hash
+  Hash,
+  ChevronDown
 } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import ReactMarkdown from "react-markdown";
 import { format } from "date-fns";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { useState } from "react";
+
+const MAX_FILENAME_LEN = 120;
+
+function yamlEscapeDoubleQuoted(s: string) {
+  return s
+    .replace(/\\/g, "\\\\")
+    .replace(/"/g, '\\"')
+    .replace(/\r\n/g, "\n")
+    .replace(/\r/g, "\n");
+}
+
+function yamlList(items: string[]) {
+  if (!items.length) return "[]";
+  return "\n" + items.map(t => `  - "${yamlEscapeDoubleQuoted(t)}"`).join("\n");
+}
+
+function slugifyFilename(input: string) {
+  const normalized = input.normalize("NFKD");
+  const stripped = normalized
+    .replace(/[<>:"/\\|?*\u0000-\u001F]/g, "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .replace(/[. ]+$/g, "");
+  const slug = stripped
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/^-|-$/g, "");
+  return slug || "chat";
+}
+
+function truncateMiddle(s: string, maxLen: number) {
+  if (s.length <= maxLen) return s;
+  const half = Math.floor((maxLen - 3) / 2);
+  return s.slice(0, half) + "..." + s.slice(s.length - half);
+}
+
+function formatAsRoleBlocks(content: string) {
+  const text = content.replace(/\r\n/g, "\n");
+  const lines = text.split("\n");
+  const roleRegex = /^(user|assistant|system)\s*:\s*(.*)$/i;
+
+  let found = false;
+  const blocks: { role: string; lines: string[] }[] = [];
+  let current: { role: string; lines: string[] } | null = null;
+
+  for (const line of lines) {
+    const m = line.match(roleRegex);
+    if (m) {
+      found = true;
+      if (current) blocks.push(current);
+      current = { role: m[1].toLowerCase(), lines: [m[2]] };
+    } else {
+      if (!current) return content;
+      current.lines.push(line);
+    }
+  }
+  if (current) blocks.push(current);
+  if (!found || blocks.length < 2) return content;
+
+  const roleTitle = (r: string) =>
+    r === "user" ? "User" : r === "assistant" ? "Assistant" : "System";
+
+  return blocks
+    .map(b => `## ${roleTitle(b.role)}\n\n${b.lines.join("\n").trim()}`)
+    .join("\n\n");
+}
 
 export default function ChatDetail() {
   const [match, params] = useRoute("/chats/:id");
@@ -30,31 +104,45 @@ export default function ChatDetail() {
   if (isLoading) return <DetailSkeleton />;
   if (isError || !chat) return <div className="p-8 text-center">Chat not found</div>;
 
-  const handleExport = () => {
+  const handleExport = (options?: { roleBlocks?: boolean }) => {
     setIsExporting(true);
     try {
-      // Create Obsidian-friendly Markdown content
+      const created = new Date(chat.createdAt!);
+      const dateForFrontmatter = format(created, "yyyy-MM-dd HH:mm");
+      const dateForFilename = format(created, "yyyy-MM-dd");
+
+      const safeTitle = yamlEscapeDoubleQuoted(chat.title);
+      const tags = Array.isArray(chat.tags) ? chat.tags : [];
+
       const frontmatter = [
         "---",
-        `title: "${chat.title}"`,
-        `agent: ${chat.agent}`,
-        `date: ${format(new Date(chat.createdAt!), "yyyy-MM-dd HH:mm")}`,
-        `tags: [${chat.tags?.join(", ")}]`,
+        `title: "${safeTitle}"`,
+        `agent: "${chat.agent}"`,
+        `date: "${dateForFrontmatter}"`,
+        `tags: ${yamlList(tags)}`,
         "---",
         "",
         `# ${chat.title}`,
         "",
-        chat.content
+        options?.roleBlocks ? formatAsRoleBlocks(chat.content) : chat.content,
+        "",
       ].join("\n");
+
+      const base = `${dateForFilename} - ${slugifyFilename(chat.title)} - ${chat.id}.md`;
+      const filename = truncateMiddle(base, MAX_FILENAME_LEN);
 
       const blob = new Blob([frontmatter], { type: "text/markdown;charset=utf-8" });
       const url = URL.createObjectURL(blob);
+
       const link = document.createElement("a");
       link.href = url;
-      link.download = `${chat.title.replace(/[^a-z0-9]/gi, '_').toLowerCase()}.md`;
+      link.download = filename;
+
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
+
+      setTimeout(() => URL.revokeObjectURL(url), 0);
     } finally {
       setIsExporting(false);
     }
@@ -88,10 +176,23 @@ export default function ChatDetail() {
           </div>
           
           <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" onClick={handleExport} disabled={isExporting}>
-              <Download className="w-4 h-4 mr-2" />
-              Export to Obsidian
-            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm" disabled={isExporting} data-testid="button-export">
+                  <Download className="w-4 h-4 mr-2" />
+                  Export
+                  <ChevronDown className="w-3 h-3 ml-1" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={() => handleExport()} data-testid="export-raw">
+                  Export as Raw Markdown
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleExport({ roleBlocks: true })} data-testid="export-formatted">
+                  Export with Role Blocks
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
             
             <Button variant="outline" size="icon" onClick={() => setLocation(`/chats/${id}/edit`)}>
               <Edit className="w-4 h-4" />

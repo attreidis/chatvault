@@ -1,0 +1,128 @@
+const MAX_FILENAME_LEN = 120; // conservative cross-platform safety
+
+function yamlEscapeDoubleQuoted(s: string) {
+  // YAML double-quoted strings support escaping with backslash.
+  return s
+    .replace(/\\/g, "\\\\")
+    .replace(/"/g, '\\"')
+    .replace(/\r\n/g, "\n")
+    .replace(/\r/g, "\n");
+}
+
+function yamlList(items: string[]) {
+  // Emit a block list to avoid inline YAML parsing headaches.
+  if (!items.length) return "[]";
+  return "\n" + items.map(t => `  - "${yamlEscapeDoubleQuoted(t)}"`).join("\n");
+}
+
+function slugifyFilename(input: string) {
+  // Normalize and remove characters problematic for Windows/macOS.
+  const normalized = input.normalize("NFKD");
+
+  const stripped = normalized
+    .replace(/[<>:"/\\|?*\u0000-\u001F]/g, "") // illegal on Windows + control chars
+    .replace(/\s+/g, " ")                       // collapse whitespace
+    .trim()
+    .replace(/[. ]+$/g, "");                    // no trailing dot/space (Windows)
+
+  // Replace remaining non-word-ish chars with hyphen for readability.
+  const slug = stripped
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/^-|-$/g, "");
+
+  return slug || "chat";
+}
+
+function truncateMiddle(s: string, maxLen: number) {
+  if (s.length <= maxLen) return s;
+  const half = Math.floor((maxLen - 3) / 2);
+  return s.slice(0, half) + "..." + s.slice(s.length - half);
+}
+
+// Optional heuristic formatter: tries to split common chat transcript patterns.
+// Safe fallback: returns original content if it can't confidently parse.
+function formatAsRoleBlocks(content: string) {
+  const text = content.replace(/\r\n/g, "\n");
+
+  // Common patterns: "User:" / "Assistant:" lines
+  const lines = text.split("\n");
+  const roleRegex = /^(user|assistant|system)\s*:\s*(.*)$/i;
+
+  let found = false;
+  const blocks: { role: string; lines: string[] }[] = [];
+  let current: { role: string; lines: string[] } | null = null;
+
+  for (const line of lines) {
+    const m = line.match(roleRegex);
+    if (m) {
+      found = true;
+      if (current) blocks.push(current);
+      current = { role: m[1].toLowerCase(), lines: [m[2]] };
+    } else {
+      if (!current) {
+        // No role detected yet; treat as raw.
+        return content;
+      }
+      current.lines.push(line);
+    }
+  }
+  if (current) blocks.push(current);
+
+  if (!found || blocks.length < 2) return content;
+
+  const roleTitle = (r: string) =>
+    r === "user" ? "User" : r === "assistant" ? "Assistant" : "System";
+
+  return blocks
+    .map(b => `## ${roleTitle(b.role)}\n\n${b.lines.join("\n").trim()}`)
+    .join("\n\n");
+}
+
+const handleExport = (options?: { roleBlocks?: boolean }) => {
+  setIsExporting(true);
+  try {
+    const created = new Date(chat.createdAt!);
+    const dateForFrontmatter = format(created, "yyyy-MM-dd HH:mm");
+    const dateForFilename = format(created, "yyyy-MM-dd");
+
+    // YAML-safe frontmatter
+    const safeTitle = yamlEscapeDoubleQuoted(chat.title);
+    const tags = Array.isArray(chat.tags) ? chat.tags : [];
+
+    const frontmatter =
+      [
+        "---",
+        `title: "${safeTitle}"`,
+        `agent: "${chat.agent}"`,
+        `date: "${dateForFrontmatter}"`,
+        `tags: ${yamlList(tags)}`,
+        "---",
+        "",
+        `# ${chat.title}`,
+        "",
+        options?.roleBlocks ? formatAsRoleBlocks(chat.content) : chat.content,
+        "",
+      ].join("\n");
+
+    const base = `${dateForFilename} - ${slugifyFilename(chat.title)} - ${chat.id}.md`;
+    const filename = truncateMiddle(base, MAX_FILENAME_LEN);
+
+    const blob = new Blob([frontmatter], { type: "text/markdown;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = filename;
+
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+
+    // Clean up the object URL
+    setTimeout(() => URL.revokeObjectURL(url), 0);
+  } finally {
+    setIsExporting(false);
+  }
+};
