@@ -1,6 +1,6 @@
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { insertChatSchema } from "@shared/schema";
+import { AGENTS, insertChatSchema, type Agent } from "@shared/schema";
 import { useUpdateChat, useChat } from "@/hooks/use-chats";
 import { AppLayout } from "@/components/AppLayout";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDescription } from "@/components/ui/form";
@@ -15,11 +15,12 @@ import { z } from "zod";
 import { useEffect } from "react";
 
 const formSchema = insertChatSchema.extend({
-  title: z.string().min(1, "Title is required"),
-  content: z.string().min(1, "Content is required"),
-  agent: z.string().min(1, "Please select an agent"),
   tagsStr: z.string().optional(),
 });
+
+function asAgent(value: string): Agent {
+  return AGENTS.find((agent) => agent === value) ?? "other";
+}
 
 type FormValues = z.infer<typeof formSchema>;
 
@@ -47,7 +48,7 @@ export default function EditChat() {
       form.reset({
         title: chat.title,
         content: chat.content,
-        agent: chat.agent,
+        agent: asAgent(chat.agent),
         tags: chat.tags || [],
         tagsStr: chat.tags?.join(", ") || "",
       });
@@ -55,12 +56,13 @@ export default function EditChat() {
   }, [chat, form]);
 
   const onSubmit = (data: FormValues) => {
-    const tags = data.tagsStr 
-      ? data.tagsStr.split(",").map(t => t.trim()).filter(Boolean)
+    const { tagsStr, ...chat } = data;
+    const tags = tagsStr
+      ? tagsStr.split(",").map(t => t.trim()).filter(Boolean)
       : [];
 
     mutate(
-      { id, ...data, tags },
+      { id, ...chat, tags },
       {
         onSuccess: () => setLocation(`/chats/${id}`),
       }

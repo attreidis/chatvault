@@ -15,10 +15,7 @@ import { z } from "zod";
 
 // Enhance schema for form validation
 const formSchema = insertChatSchema.extend({
-  title: z.string().min(1, "Title is required"),
-  content: z.string().min(1, "Content is required"),
-  agent: z.string().min(1, "Please select an agent"),
-  tagsStr: z.string().optional(), // Helper for comma-separated input
+  tagsStr: z.string().optional(),
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -39,13 +36,13 @@ export default function CreateChat() {
   });
 
   const onSubmit = (data: FormValues) => {
-    // Process tags string into array
-    const tags = data.tagsStr 
-      ? data.tagsStr.split(",").map(t => t.trim()).filter(Boolean)
+    const { tagsStr, ...chat } = data;
+    const tags = tagsStr
+      ? tagsStr.split(",").map(t => t.trim()).filter(Boolean)
       : [];
 
     mutate(
-      { ...data, tags },
+      { ...chat, tags },
       {
         onSuccess: () => setLocation("/dashboard"),
       }

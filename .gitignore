@@ -5,10 +5,10 @@ server/public
 vite.config.ts.*
 *.tar.gz
 
-# Environment
+# Environment. Keep the example file, which has placeholders only.
 .env
-.env.local
-.env.*.local
+.env.*
+!.env.example
 
 # Replit specific
 .cache

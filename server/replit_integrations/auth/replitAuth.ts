@@ -7,6 +7,7 @@ import type { Express, RequestHandler } from "express";
 import memoize from "memoizee";
 import connectPg from "connect-pg-simple";
 import { authStorage } from "./storage";
+import { readTrustedAppEnv, resolveTrustedApp, trustedAppsFromEnv, type TrustedApp } from "../../trusted-app-url";
 
 const getOidcConfig = memoize(
   async () => {
@@ -27,6 +28,9 @@ export function getSession() {
     ttl: sessionTtl,
     tableName: "sessions",
   });
+  const secureCookie = trustedAppsFromEnv(readTrustedAppEnv()).every((app) =>
+    app.origin.startsWith("https://"),
+  );
   return session({
     secret: process.env.SESSION_SECRET!,
     store: sessionStore,
@@ -34,7 +38,8 @@ export function getSession() {
     saveUninitialized: false,
     cookie: {
       httpOnly: true,
-      secure: true,
+      secure: secureCookie,
+      sameSite: "lax",
       maxAge: sessionTtl,
     },
   });
@@ -78,52 +83,51 @@ export async function setupAuth(app: Express) {
     verified(null, user);
   };
 
-  // Keep track of registered strategies
-  const registeredStrategies = new Set<string>();
+  const trustedApps = trustedAppsFromEnv(readTrustedAppEnv());
+  const strategyNameFor = (appUrl: TrustedApp) => `replitauth:${appUrl.origin}`;
 
-  // Helper function to ensure strategy exists for a domain
-  const ensureStrategy = (domain: string) => {
-    const strategyName = `replitauth:${domain}`;
-    if (!registeredStrategies.has(strategyName)) {
-      const strategy = new Strategy(
-        {
-          name: strategyName,
-          config,
-          scope: "openid email profile offline_access",
-          callbackURL: `https://${domain}/api/callback`,
-        },
-        verify
-      );
-      passport.use(strategy);
-      registeredStrategies.add(strategyName);
-    }
-  };
+  for (const appUrl of trustedApps) {
+    const strategy = new Strategy(
+      {
+        name: strategyNameFor(appUrl),
+        config,
+        scope: "openid email profile offline_access",
+        callbackURL: `${appUrl.origin}/api/callback`,
+      },
+      verify
+    );
+    passport.use(strategy);
+  }
+
+  const appForRequest = (hostname: string | undefined) =>
+    resolveTrustedApp(readTrustedAppEnv(), hostname);
 
   passport.serializeUser((user: Express.User, cb) => cb(null, user));
   passport.deserializeUser((user: Express.User, cb) => cb(null, user));
 
   app.get("/api/login", (req, res, next) => {
-    ensureStrategy(req.hostname);
-    passport.authenticate(`replitauth:${req.hostname}`, {
+    const appUrl = appForRequest(req.hostname);
+    passport.authenticate(strategyNameFor(appUrl), {
       prompt: "login consent",
       scope: ["openid", "email", "profile", "offline_access"],
     })(req, res, next);
   });
 
   app.get("/api/callback", (req, res, next) => {
-    ensureStrategy(req.hostname);
-    passport.authenticate(`replitauth:${req.hostname}`, {
+    const appUrl = appForRequest(req.hostname);
+    passport.authenticate(strategyNameFor(appUrl), {
       successReturnToOrRedirect: "/",
       failureRedirect: "/api/login",
     })(req, res, next);
   });
 
   app.get("/api/logout", (req, res) => {
+    const appUrl = appForRequest(req.hostname);
     req.logout(() => {
       res.redirect(
         client.buildEndSessionUrl(config, {
           client_id: process.env.REPL_ID!,
-          post_logout_redirect_uri: `${req.protocol}://${req.hostname}`,
+          post_logout_redirect_uri: appUrl.origin,
         }).href
       );
     });
