@@ -1,6 +1,8 @@
 import { z } from 'zod';
 import { insertChatSchema, updateChatSchema, chats } from './schema';
 
+export type { CreateChatRequest, UpdateChatRequest } from './schema';
+
 // === SHARED ERROR SCHEMAS ===
 export const errorSchemas = {
   validation: z.object({

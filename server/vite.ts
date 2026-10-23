@@ -9,11 +9,8 @@ import { nanoid } from "nanoid";
 const viteLogger = createLogger();
 
 export async function setupVite(server: Server, app: Express) {
-  const serverOptions = {
-    middlewareMode: true,
-    hmr: { server, path: "/vite-hmr" },
-    allowedHosts: true as const,
-  };
+  const configuredServer =
+    viteConfig.server && typeof viteConfig.server === "object" ? viteConfig.server : {};
 
   const vite = await createViteServer({
     ...viteConfig,
@@ -25,7 +22,13 @@ export async function setupVite(server: Server, app: Express) {
         process.exit(1);
       },
     },
-    server: serverOptions,
+    server: {
+      ...configuredServer,
+      middlewareMode: true,
+      hmr: { server, path: "/vite-hmr" },
+      // Reject site names other than this computer. `true` would allow every name.
+      allowedHosts: ["localhost", "127.0.0.1"],
+    },
     appType: "custom",
   });
 

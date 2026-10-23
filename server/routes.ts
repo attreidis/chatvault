@@ -4,6 +4,7 @@ import { storage } from "./storage";
 import { setupAuth, registerAuthRoutes, isAuthenticated } from "./replit_integrations/auth";
 import { api } from "@shared/routes";
 import { z } from "zod";
+import { describeFailure } from "./safe-log";
 
 // Zod schema for validating route params
 const idParamSchema = z.coerce.number().int().positive();
@@ -74,7 +75,7 @@ export async function registerRoutes(
         field: err.errors[0]?.path?.join('.'),
       });
     }
-    console.error(err);
+    console.error(`Request failed ${req.method} ${req.path}: ${describeFailure(err)}`);
     res.status(500).json({ message: "Internal server error" });
   });
 
